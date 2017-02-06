@@ -1,0 +1,46 @@
+Flashmon Tools :
+================
+This directory contains a set of tools used with Flashmon:
+
+1. load_nandsim is a script to quickly load the nandsim NAND simulator,
+   see comments in the script for more info, and:
+	 http://lxr.free-electrons.com/source/drivers/mtd/nand/nandsim.c
+	 
+2. plotSpatial.sh is a script that uses gnuplot to plot in real time
+   the spatial view output (/proc/flashmon), see comments in the script 
+   for more info,
+   
+3. plotLog.sh also uses gnuplot to plot the temporal log output (
+   /proc/flashmon_log), see comments in the script for more details.
+   
+4. flashmon_overhead/ contains a script to evaluate flashmon overhead
+   on the traced system I/O performances, see the comments in this
+   script.
+   
+5. flashmon_startzero is a C program that takes as input a csv file
+   being the output of the temporal log (like plotLog.sh), and apply a
+   negative offset on all arrival times to have the first event
+   arrive at time 0. This makes the trace more readable.
+   
+ 6. flashmon_log_analyzer take a temporal log as input (like 
+    flashmon_startzero). It allows to regroup events with the same task
+    name, making the trace more readable. For example, this :
+    
+    11.613885303;R;6319;dropbear
+		11.614131258;R;6320;dropbear
+		11.617199949;R;8962;dropbear
+		11.617452400;R;8963;dropbear
+		11.622363737;R;9044;rcS
+		11.662072000;R;7812;init
+		11.662415759;R;9194;init
+		11.662725895;R;7812;init
+		11.673449020;W;5035;getty
+		11.674165652;W;5036;getty
+		11.692061408;W;8995;getty
+		11.692774791;W;8996;getty							(it's a fake trace)
+		
+		will become this :
+		11.613885303 -> 11.617452400 (0,003567097): [dropbear], R/W/E: 4/0/0
+		11.622363737 -> 11.622363737 (0): [rcS], R/W/E: 1/0/0
+		11.662415759 -> 11.662725895 (0,000653895): [init], R/W/E: 3/0/0
+		11.673449020 -> 11.692774791 (0,019325771): [getty], R/W/E: 0/4/0
