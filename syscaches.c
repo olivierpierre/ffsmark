@@ -31,33 +31,33 @@
 
 static int write_ctrl_file(int cmd);
 
-int syscaches_drop_caches()
-{
+int syscaches_drop_caches() {
   sync();
   return write_ctrl_file(3);
 }
 
-int syscaches_drop_page_cache()
-{
+int syscaches_drop_page_cache() {
   sync();
   return write_ctrl_file(1);
 }
 
-int syscaches_drop_dentry_inode_caches()
-{
+int syscaches_drop_dentry_inode_caches() {
   sync();
   return write_ctrl_file(2);
 }
 
-static int write_ctrl_file(int cmd)
-{
+static int write_ctrl_file(int cmd) {
   FILE *f;
-  
-  f = fopen(CONTROL_CACHE_FILE, "w+");
-  
-  fprintf(f, "%d", cmd);
-  
-  fclose(f);
-  
-  return 0;
+
+  f = fopen(CONTROL_CACHE_FILE, "w");
+
+  if(f) {
+      fprintf(f, "%d", cmd);
+      fclose(f);
+      return 0;
+  }
+
+  fprintf(stderr, "Can't open %s: ", CONTROL_CACHE_FILE);
+  perror("");
+  return -1;
 }

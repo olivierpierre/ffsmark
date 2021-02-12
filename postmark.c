@@ -243,6 +243,8 @@ extern int cli_set_bias_read ();
 extern int cli_set_bias_create ();
 extern int cli_set_report ();
 extern int cli_set_flashmon();
+extern int cli_set_direct();
+extern int cli_set_sync();
 
 extern int cli_run ();
 extern int cli_show ();
@@ -269,9 +271,11 @@ cmd command_list[] = {		/* table of CLI commands */
   {"help", cli_help, "Prints out available commands"},
   {"quit", cli_quit, "Exit program"},
   /* FFSMark */
+  {"set direct", cli_set_direct, "[true | false] Use direct I/O (only when buffered is false)"},
+  {"set sync", cli_set_sync, "[true | false] Use synchronous I/O (only when buffered is false)"}, 
   {"set flashmon", cli_set_flashmon, "[true | false] Use flashmon to report flash statistics (module must be loaded)"},
-  {"set drop creation", cli_set_drop_creation, "[true | false] Drop the system caches at the start of the benchmark (file creation)"},
-  {"set drop transactions", cli_set_drop_transactions, "[true | false] Drop the system caches before the transaction phase"},
+  {"set drop creation", cli_set_drop_creation, "[true | false] Drop the system caches at the start of the benchmark (need root permissions)"},
+  {"set drop transactions", cli_set_drop_transactions, "[true | false] Drop the system caches before the transaction phase (need root permissions)"},
   {"set fill creation valid", cli_set_fill_valid_creation, "[ratio] Percentage of free space transformed into valid space at the start of the benchmark"},
   {"set fill creation invalid", cli_set_fill_invalid_creation, "[ratio] Percentage of free space transformed into invalid space at the start of the benchmark"},
   {"set fill transaction valid", cli_set_fill_valid_transaction, "[ratio] Percentage of free space transformed into valid space before the transaction phase"},
@@ -279,7 +283,7 @@ cmd command_list[] = {		/* table of CLI commands */
   {NULL}
 };
 
-#define minimum 
+#define minimum
 
 extern void verbose_report ();
 extern void terse_report ();
@@ -941,7 +945,7 @@ create_file (buffered)
       if (buffered)
 	fp = fopen (file_table[free_file].name, "w");
       else
-	fd = open (file_table[free_file].name, O_RDWR | O_CREAT, 0644);
+	fd = open (file_table[free_file].name, O_RDWR | O_CREAT | open_flags, 0644);
 
       if (fp || fd != -1)
 	{
@@ -993,7 +997,7 @@ read_file (number, buffered)
   if (buffered)
     fp = fopen (file_table[number].name, "r");
   else
-    fd = open (file_table[number].name, O_RDONLY, 0644);
+    fd = open (file_table[number].name, O_RDONLY | open_flags, 0644);
 
   if (fp || fd != -1)
     {				/* read as many blocks as possible then read the remainder */
@@ -1042,7 +1046,7 @@ append_file (number, buffered)
       if (buffered)
 	fp = fopen (file_table[number].name, "a");
       else
-	fd = open (file_table[number].name, O_RDWR | O_APPEND, 0644);
+	fd = open (file_table[number].name, O_RDWR | O_APPEND | open_flags, 0644);
 
       if ((fp || fd != -1) && file_table[number].size < file_size_high)
 	{
@@ -1252,9 +1256,11 @@ cli_run (param)			/* none */
     location_index = build_location_index (file_systems, file_system_weight);
 
   /* FFSMark */
-  if (ffsmark_hooks_pre_subdirs_creation ())
+  if (ffsmark_hooks_pre_subdirs_creation ()) {
     fprintf (stderr,
-	     "FFSMark error : ffsmark_hooks_pre_subdirs_creation()\n");
+	     "FFSMark error : ffsmark_hooks_pre_subdirs_creation(), exiting\n");
+    exit(-1);
+  }
 
   /* create subdirectories if necessary */
   if (subdirectories > 1)

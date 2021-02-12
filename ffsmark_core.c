@@ -21,6 +21,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE
+
 #include "ffsmark_core.h"
 
 #include <stdio.h>
@@ -33,6 +35,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <sys/types.h>
 
 #include "flashmon_ctrl.h"
 #include "syscaches.h"
@@ -40,6 +43,8 @@
 #define RANDOM_DATA_SRC     "/dev/urandom"
 #define VALID_FILE_NAME     "__ffsmark_valid__"
 #define INVALID_FILE_NAME   "__ffsmark_invalid__"
+
+int open_flags = 0;
 
 typedef struct
 {
@@ -278,30 +283,30 @@ static int fill_valid_invalid(char *path, double valid_ratio,
   struct statvfs vstat;
   uint64_t free_space, valid_size, invalid_size;
   char valid_path[128], invalid_path[128];
-  
+
   if(statvfs(path, &vstat) != 0)
   {
     perror("statvfs");
     return -1;
   }
-  
+
   free_space = (uint64_t)(vstat.f_bfree*vstat.f_bsize);
   valid_size = (uint64_t)(valid_ratio*((double)(free_space)));
   invalid_size = (uint64_t)(invalid_ratio*((double)(free_space)));
-  
+
   sprintf(valid_path, "%s/%s.%d", cfg.location, VALID_FILE_NAME, 
     rand()%50000);
   sprintf(invalid_path, "%s/%s.%d", cfg.location, INVALID_FILE_NAME,
     rand()%50000);
-    
+
   while(access(valid_path, F_OK) != -1)
     sprintf(valid_path, "%s/%s.%d", cfg.location, VALID_FILE_NAME, 
     rand()%50000);
-    
+
   while(access(invalid_path, F_OK) != -1)
     sprintf(invalid_path, "%s/%s.%d", cfg.location, INVALID_FILE_NAME, 
     rand()%50000);
-    
+
   if(valid_size)
   {
     if(ffsmark_core_create_file(valid_path, valid_size))
@@ -310,7 +315,7 @@ static int fill_valid_invalid(char *path, double valid_ratio,
       return -1;
     }
   }
-    
+
   if(invalid_size)
   {
     if(ffsmark_core_create_file(invalid_path, invalid_size))
@@ -320,7 +325,7 @@ static int fill_valid_invalid(char *path, double valid_ratio,
     }
     remove(invalid_path);
   }
-    
+
   return 0;
 }
 
@@ -434,8 +439,7 @@ out_close:
   return ret;
 }
 
-int ffsmark_hooks_pre_subdirs_creation()
-{
+int ffsmark_hooks_pre_subdirs_creation() {
   if(cfg.fill_invalid_creation || cfg.fill_valid_creation)
   {
     printf("Creating valid (%lf) and invalid (%lf) data for creation "
@@ -444,13 +448,13 @@ int ffsmark_hooks_pre_subdirs_creation()
       cfg.fill_invalid_creation) != 0)
         return -1;
   }
-  
-  if(cfg.drop_creation)
-  {
+
+  if(cfg.drop_creation) {
     printf("Cache drop before creation phase\n");
-    syscaches_drop_caches();
+    if(syscaches_drop_caches())
+        return -1;
   }
-  
+
   if(cfg.flashmon_enabled)
   {
     printf("Reset flashmon\n");
@@ -478,12 +482,12 @@ int ffsmark_hooks_pre_transactions()
       cfg.fill_invalid_transaction) != 0)
         return -1;
   }
-  
-  if(cfg.drop_transaction)
-  {
+
+  if(cfg.drop_transaction) {
     printf("Cache drop before transaction phase\n");
-    syscaches_drop_caches();
-   } 
+    if(syscaches_drop_caches())
+        return -1;
+  }
 /*  if(cfg.flashmon_enabled)
     if(flashmon_ctrl_reset() != 0)
       return -1;
@@ -515,5 +519,27 @@ int ffsmark_hooks_post_subdirs_deletion()
       return -1;
   }
   return 0;
+}
+
+int cli_set_direct(char *param) {
+  if (param && !strcmp(param, "true"))
+    open_flags |= O_DIRECT;
+  else if (param && !strcmp(param, "false"))
+    open_flags &= ~O_DIRECT;
+  else
+    fprintf (stderr, "Error: please indicate true or false\n");
+
+  return 1;
+}
+
+int cli_set_sync(char *param) {
+  if (param && !strcmp(param, "true"))
+    open_flags |= O_SYNC;
+  else if (param && !strcmp(param, "false"))
+    open_flags &= ~O_SYNC;
+  else
+    fprintf (stderr, "Error: please indicate true or false\n");
+
+  return 1;
 }
 

@@ -1,5 +1,5 @@
-CC=arm-linux-gcc
-CFLAGS=-Wall -Werror
+CC=gcc
+CFLAGS=
 LDFLAGS=-lm
 PROGS=ffsmark
 
@@ -16,7 +16,7 @@ all: depends $(PROGS)
 
 ffsmark: $(ffsmark_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
-	
+
 %.o : %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 
@@ -25,7 +25,7 @@ install: all
 
 clean:
 	rm -rf *.o $(PROGS) .depends
-	
+
 depends: .depends
 .depends:
 	$(CC) -MM *.c *.h > .depends
