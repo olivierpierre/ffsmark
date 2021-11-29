@@ -65,6 +65,6 @@ int ffsmark_hooks_pre_files_deletion();
 int ffsmark_hooks_pre_subdirs_deletion();
 int ffsmark_hooks_post_subdirs_deletion();
 
-int open_flags;
+extern int open_flags;
 
 #endif /* FFSMARK_CORE_H */
